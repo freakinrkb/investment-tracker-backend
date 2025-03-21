@@ -10,7 +10,7 @@ const app = express();
 // Enable CORS for specific origins
 const allowedOrigins = [
   'http://localhost:3000', // Allow local development
-  'https://investment-tracker-frontend.vercel.app', // Allow deployed frontend
+  'https://investment-tracker-frontend-neon.vercel.app/', // Allow deployed frontend
 ];
 
 app.use(cors({
