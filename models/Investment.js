@@ -10,9 +10,9 @@ const investmentSchema = new mongoose.Schema({
   odds2: { type: Number, required: true },
   sixTeam1: { type: Boolean, default: false },
   sixTeam2: { type: Boolean, default: false },
-  winner: { type: String, enum: ['team1', 'team2'], required: true },
+  winner: { type: String, enum: ['team1', 'team2', 'none'], default: 'none' }, // Allow 'none' and set as default
   cashOutTeam: { type: String, default: '' },
-  customCashOut: { type: Number, default: 0 },
+  customCashOut: { type: Number, default: null }, // Allow null, make optional
   investmentTeam1USD: { type: Number, required: true },
   investmentTeam2USD: { type: Number, required: true },
   investmentTeam1INR: { type: Number, required: true },

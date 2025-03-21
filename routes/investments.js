@@ -30,8 +30,85 @@ const getExchangeRate = async () => {
     return response.data.rates.INR;
   } catch (err) {
     console.error('Error fetching exchange rate:', err.message);
-    return 83;
+    return 83; // Fallback exchange rate
   }
+};
+
+// Reusable function to calculate investment metrics
+const calculateInvestmentMetrics = async (investmentData) => {
+  const exchangeRate = await getExchangeRate();
+  const {
+    team1, team2, date, odds1, odds2, sixTeam1 = false, sixTeam2 = false,
+    winner, cashOutTeam = '', customCashOut = 0, currency, bettingId
+  } = investmentData;
+
+  // Validate required fields
+  if (!team1 || !team2 || !date || !odds1 || !odds2 || !winner || !currency || !bettingId) {
+    throw new Error('Missing required fields');
+  }
+  if (odds1 <= 0 || odds2 <= 0) {
+    throw new Error('Odds must be positive numbers');
+  }
+  if (!['team1', 'team2', 'none'].includes(winner)) {
+    throw new Error('Winner must be "team1", "team2", or "none"');
+  }
+
+  // Calculate investments
+  const baseInvestmentUSD = 25;
+  const investmentTeam1USD = baseInvestmentUSD / odds1;
+  const investmentTeam2USD = baseInvestmentUSD / odds2;
+  const investmentTeam1INR = investmentTeam1USD * exchangeRate;
+  const investmentTeam2INR = investmentTeam2USD * exchangeRate;
+
+  const totalInvestedUSD = investmentTeam1USD + investmentTeam2USD;
+  const totalInvestedINR = totalInvestedUSD * exchangeRate;
+
+  let totalWinningsUSD = 0;
+  let totalWinningsINR = 0;
+
+  if (sixTeam1 && winner === 'team2') {
+    totalWinningsUSD = (investmentTeam2USD * odds2) + 25;
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (sixTeam1 && winner === 'team1') {
+    totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut / exchangeRate);
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (sixTeam2 && winner === 'team1') {
+    totalWinningsUSD = (investmentTeam1USD * odds1) + 25;
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (sixTeam2 && winner === 'team2') {
+    totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut / exchangeRate);
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (winner === 'team1') {
+    totalWinningsUSD = investmentTeam1USD * odds1;
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (winner === 'team2') {
+    totalWinningsUSD = investmentTeam2USD * odds2;
+    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  }
+
+  // Round the values to 2 decimal places
+  totalWinningsUSD = parseFloat(totalWinningsUSD.toFixed(2));
+  totalWinningsINR = parseFloat(totalWinningsINR.toFixed(2));
+
+  const profitLossUSD = totalWinningsUSD - totalInvestedUSD;
+  const profitLossINR = totalWinningsINR - totalInvestedINR;
+
+  // Round profit/loss to 2 decimal places
+  const roundedProfitLossUSD = parseFloat(profitLossUSD.toFixed(2));
+  const roundedProfitLossINR = parseFloat(profitLossINR.toFixed(2));
+
+  return {
+    investmentTeam1USD,
+    investmentTeam2USD,
+    investmentTeam1INR,
+    investmentTeam2INR,
+    totalInvestedUSD,
+    totalInvestedINR,
+    totalWinningsUSD,
+    totalWinningsINR,
+    profitLossUSD: roundedProfitLossUSD,
+    profitLossINR: roundedProfitLossINR,
+  };
 };
 
 router.get('/', authenticateToken, async (req, res) => {
@@ -46,72 +123,18 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const exchangeRate = await getExchangeRate();
-    const {
-      team1, team2, date, odds1, odds2, sixTeam1 = false, sixTeam2 = false,
-      winner, cashOutTeam = '', customCashOut = 0, currency, bettingId
-    } = req.body;
-
-    if (!team1 || !team2 || !date || !odds1 || !odds2 || !winner || !currency || !bettingId) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-    if (odds1 <= 0 || odds2 <= 0) {
-      return res.status(400).json({ message: 'Odds must be positive numbers' });
-    }
-    if (!['team1', 'team2'].includes(winner)) {
-      return res.status(400).json({ message: 'Winner must be "team1" or "team2"' });
-    }
-
-    const baseInvestmentUSD = 25;
-    const investmentTeam1USD = baseInvestmentUSD / odds1;
-    const investmentTeam2USD = baseInvestmentUSD / odds2;
-    const investmentTeam1INR = investmentTeam1USD * exchangeRate;
-    const investmentTeam2INR = investmentTeam2USD * exchangeRate;
-
-    const totalInvestedUSD = investmentTeam1USD + investmentTeam2USD;
-    const totalInvestedINR = totalInvestedUSD * exchangeRate;
-
-    let totalWinningsUSD = 0;
-    let totalWinningsINR = 0;
-
-    if (sixTeam1 && winner === 'team2') {
-      totalWinningsUSD = (investmentTeam2USD * odds2) + 25;
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    } else if (sixTeam1 && winner === 'team1') {
-      totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut / exchangeRate);
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    } else if (sixTeam2 && winner === 'team1') { // Added this condition
-      totalWinningsUSD = (investmentTeam1USD * odds1) + 25;
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    } else if (sixTeam2 && winner === 'team2') { // Added this condition for completeness
-      totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut / exchangeRate);
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    } else if (winner === 'team1') {
-      totalWinningsUSD = investmentTeam1USD * odds1;
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    } else if (winner === 'team2') {
-      totalWinningsUSD = investmentTeam2USD * odds2;
-      totalWinningsINR = totalWinningsUSD * exchangeRate;
-    }
-
-    // Round the values to 2 decimal places
-    totalWinningsUSD = parseFloat(totalWinningsUSD.toFixed(2));
-    totalWinningsINR = parseFloat(totalWinningsINR.toFixed(2));
-
-    const profitLossUSD = totalWinningsUSD - totalInvestedUSD;
-    const profitLossINR = totalWinningsINR - totalInvestedINR;
-
-    // Round profit/loss to 2 decimal places
-    const roundedProfitLossUSD = parseFloat(profitLossUSD.toFixed(2));
-    const roundedProfitLossINR = parseFloat(profitLossINR.toFixed(2));
-
-    const investment = new Investment({
+    const investmentData = {
+      ...req.body,
       userId: req.user.userId,
-      team1, team2, date, odds1, odds2, sixTeam1, sixTeam2, winner,
-      cashOutTeam, customCashOut, investmentTeam1USD, investmentTeam2USD,
-      investmentTeam1INR, investmentTeam2INR, totalInvestedUSD, totalInvestedINR,
-      totalWinningsUSD, totalWinningsINR, profitLossUSD: roundedProfitLossUSD, profitLossINR: roundedProfitLossINR, currency,
-      bettingId
+    };
+
+    // Calculate financial metrics
+    const metrics = await calculateInvestmentMetrics(investmentData);
+
+    // Create new investment with calculated metrics
+    const investment = new Investment({
+      ...investmentData,
+      ...metrics,
     });
 
     await investment.save();
@@ -122,16 +145,40 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT and DELETE routes (unchanged)
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const investment = await Investment.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.userId },
-      req.body,
-      { new: true }
+    const { id } = req.params;
+    const updatedData = req.body;
+    console.log('Received update data:', updatedData); // Log the incoming data
+
+    // Validate that the investment belongs to the user
+    const existingInvestment = await Investment.findOne({ _id: id, userId: req.user.userId });
+    if (!existingInvestment) {
+      return res.status(404).json({ message: 'Investment not found' });
+    }
+
+    // Calculate updated financial metrics based on the new data
+    const metrics = await calculateInvestmentMetrics(updatedData);
+
+    // Merge the updated data with the calculated metrics
+    const investmentDataToUpdate = {
+      ...updatedData,
+      ...metrics,
+      userId: req.user.userId, // Ensure userId remains unchanged
+    };
+
+    // Update the investment in the database
+    const updatedInvestment = await Investment.findOneAndUpdate(
+      { _id: id, userId: req.user.userId },
+      { $set: investmentDataToUpdate },
+      { new: true, runValidators: true }
     );
-    if (!investment) return res.status(404).json({ message: 'Investment not found' });
-    res.json(investment);
+
+    if (!updatedInvestment) {
+      return res.status(404).json({ message: 'Investment not found after update' });
+    }
+
+    res.json(updatedInvestment);
   } catch (err) {
     console.error('Error updating investment:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
