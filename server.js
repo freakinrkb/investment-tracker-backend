@@ -1,37 +1,48 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const authRoutes = require('./routes/auth');
+const investmentRoutes = require('./routes/investments');
+require('dotenv').config();
 
 const app = express();
 
-// Middleware
-app.use(cors({ origin: 'http://localhost:3000' })); // Adjust origin as needed
+// Enable CORS for specific origins
+const allowedOrigins = [
+  'http://localhost:3000', // Allow local development
+  'https://investment-tracker-frontend.vercel.app', // Allow deployed frontend
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies or authorization headers (if needed)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow these HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow these headers
+}));
+
+// Middleware to parse JSON
 app.use(express.json());
 
 // Routes
-const authRoutes = require('./routes/auth');
-const investmentRoutes = require('./routes/investments');
-
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unexpected error:', err);
-  res.status(500).json({ message: 'Internal server error', error: err.message });
-});
-
-// Connect to MongoDB (no deprecated options)
-mongoose
-  .connect(process.env.MONGO_URI)
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch(err => console.error('MongoDB connection error:', err));
 
-// Start server
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
