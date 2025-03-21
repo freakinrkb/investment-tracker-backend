@@ -10,16 +10,21 @@ const app = express();
 // Enable CORS for specific origins
 const allowedOrigins = [
   'http://localhost:3000', // Allow local development
-  'https://investment-tracker-frontend-neon.vercel.app/', // Allow deployed frontend
+  'https://investment-tracker-frontend-neon.vercel.app', // Allow deployed frontend (no trailing slash)
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g., mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    console.log('Request Origin:', origin); // Log the incoming origin
+    if (!origin) {
+      console.log('No origin, allowing request');
+      return callback(null, true);
+    }
     if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
       return callback(null, true);
     } else {
+      console.log('Origin not allowed:', origin);
       return callback(new Error('Not allowed by CORS'));
     }
   },
