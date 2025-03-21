@@ -39,8 +39,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Optional: Separate registration route (if needed)
-/*
+// Registration route
 router.post('/register', async (req, res) => {
   const { userId, password } = req.body;
 
@@ -49,11 +48,13 @@ router.post('/register', async (req, res) => {
   }
 
   try {
+    // Check if user already exists
     let user = await User.findOne({ userId });
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     user = new User({ userId, password: hashedPassword });
     await user.save();
@@ -64,6 +65,5 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
-*/
 
 module.exports = router;
