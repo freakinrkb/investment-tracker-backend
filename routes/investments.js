@@ -67,31 +67,36 @@ const calculateInvestmentMetrics = async (investmentData) => {
   let totalWinningsINR = 0;
 
   // Define the bonus amount for when both teams hit sixes
-  const bonusPerTeamUSD = 25; // $25 bonus per team
+  const bonusPerTeamUSD = 25; // $25 bonus per team as specified
   const bothTeamsSixesBonusUSD = sixTeam1 && sixTeam2 ? bonusPerTeamUSD * 2 : 0; // $50 if both hit sixes
 
   // Calculate winnings based on the winner and sixes conditions
-  if (sixTeam1 && !sixTeam2 && winner === 'team2') {
+  if (sixTeam1 && sixTeam2) {
+    // Both teams hit sixes, total winnings is just the bonus amount
+    totalWinningsUSD = bothTeamsSixesBonusUSD;
+  } else if (sixTeam1 && !sixTeam2 && winner === 'team2') {
+    // Team 1 hits a six, Team 2 wins, add $25 bonus to Team 2's winnings
     totalWinningsUSD = (investmentTeam2USD * odds2) + 25;
-  } else if (sixTeam1 && !sixTeam2 && winner === 'team1') {
-    totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut / exchangeRate);
+  } else if (sixTeam1 && !sixTeam2 && winner === 'team1' && cashOutTeam === 'team2') {
+    // Team 1 hits a six and wins, Team 2 loses and cashes out
+    totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (sixTeam2 && !sixTeam1 && winner === 'team1') {
+    // Team 2 hits a six, Team 1 wins, add $25 bonus to Team 1's winnings
     totalWinningsUSD = (investmentTeam1USD * odds1) + 25;
-  } else if (sixTeam2 && !sixTeam1 && winner === 'team2') {
-    totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut / exchangeRate);
-  } else if (sixTeam1 && sixTeam2) {
-    // New logic: Both teams hit sixes, apply bonus to both teams
-    if (winner === 'team1') {
-      totalWinningsUSD = (investmentTeam1USD * odds1) + bothTeamsSixesBonusUSD;
-    } else if (winner === 'team2') {
-      totalWinningsUSD = (investmentTeam2USD * odds2) + bothTeamsSixesBonusUSD;
-    } else {
-      // If winner is 'none', still apply the bonus since both teams hit sixes
-      totalWinningsUSD = bothTeamsSixesBonusUSD;
-    }
+  } else if (sixTeam2 && !sixTeam1 && winner === 'team2' && cashOutTeam === 'team1') {
+    // Team 2 hits a six and wins, Team 1 loses and cashes out
+    totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut ? customCashOut / exchangeRate : 0);
+  } else if (winner === 'team1' && cashOutTeam === 'team2') {
+    // Neither team hits a six, Team 1 wins, Team 2 cashes out
+    totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut ? customCashOut / exchangeRate : 0);
+  } else if (winner === 'team2' && cashOutTeam === 'team1') {
+    // Neither team hits a six, Team 2 wins, Team 1 cashes out
+    totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (winner === 'team1') {
+    // Neither team hits a six, Team 1 wins, no cashout
     totalWinningsUSD = investmentTeam1USD * odds1;
   } else if (winner === 'team2') {
+    // Neither team hits a six, Team 2 wins, no cashout
     totalWinningsUSD = investmentTeam2USD * odds2;
   }
 
