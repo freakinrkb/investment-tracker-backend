@@ -66,25 +66,37 @@ const calculateInvestmentMetrics = async (investmentData) => {
   let totalWinningsUSD = 0;
   let totalWinningsINR = 0;
 
-  if (sixTeam1 && winner === 'team2') {
+  // Define the bonus amount for when both teams hit sixes
+  const bonusPerTeamUSD = 25; // $25 bonus per team
+  const bothTeamsSixesBonusUSD = sixTeam1 && sixTeam2 ? bonusPerTeamUSD * 2 : 0; // $50 if both hit sixes
+
+  // Calculate winnings based on the winner and sixes conditions
+  if (sixTeam1 && !sixTeam2 && winner === 'team2') {
     totalWinningsUSD = (investmentTeam2USD * odds2) + 25;
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
-  } else if (sixTeam1 && winner === 'team1') {
+  } else if (sixTeam1 && !sixTeam2 && winner === 'team1') {
     totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut / exchangeRate);
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
-  } else if (sixTeam2 && winner === 'team1') {
+  } else if (sixTeam2 && !sixTeam1 && winner === 'team1') {
     totalWinningsUSD = (investmentTeam1USD * odds1) + 25;
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
-  } else if (sixTeam2 && winner === 'team2') {
+  } else if (sixTeam2 && !sixTeam1 && winner === 'team2') {
     totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut / exchangeRate);
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
+  } else if (sixTeam1 && sixTeam2) {
+    // New logic: Both teams hit sixes, apply bonus to both teams
+    if (winner === 'team1') {
+      totalWinningsUSD = (investmentTeam1USD * odds1) + bothTeamsSixesBonusUSD;
+    } else if (winner === 'team2') {
+      totalWinningsUSD = (investmentTeam2USD * odds2) + bothTeamsSixesBonusUSD;
+    } else {
+      // If winner is 'none', still apply the bonus since both teams hit sixes
+      totalWinningsUSD = bothTeamsSixesBonusUSD;
+    }
   } else if (winner === 'team1') {
     totalWinningsUSD = investmentTeam1USD * odds1;
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
   } else if (winner === 'team2') {
     totalWinningsUSD = investmentTeam2USD * odds2;
-    totalWinningsINR = totalWinningsUSD * exchangeRate;
   }
+
+  // Convert winnings to INR
+  totalWinningsINR = totalWinningsUSD * exchangeRate;
 
   // Round the values to 2 decimal places
   totalWinningsUSD = parseFloat(totalWinningsUSD.toFixed(2));
@@ -126,6 +138,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const investmentData = {
       ...req.body,
       userId: req.user.userId,
+      date: new Date(req.body.date), // Ensure date is a Date object
     };
 
     // Calculate financial metrics
@@ -155,6 +168,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const existingInvestment = await Investment.findOne({ _id: id, userId: req.user.userId });
     if (!existingInvestment) {
       return res.status(404).json({ message: 'Investment not found' });
+    }
+
+    // Convert date to a Date object if provided
+    if (updatedData.date) {
+      updatedData.date = new Date(updatedData.date);
     }
 
     // Calculate updated financial metrics based on the new data
