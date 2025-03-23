@@ -75,45 +75,33 @@ const calculateInvestmentMetrics = async (investmentData) => {
 
   // Calculate winnings based on the winner and sixes conditions
   if (sixTeam1 && sixTeam2) {
-    // Both teams hit sixes, total winnings is just the bonus amount
     totalWinningsUSD = bothTeamsSixesBonusUSD;
   } else if (sixTeam1 && !sixTeam2 && winner === 'team2') {
-    // Team 1 hits a six, Team 2 wins, add $25 bonus to Team 2's winnings
     totalWinningsUSD = (investmentTeam2USD * odds2) + 25;
   } else if (sixTeam1 && !sixTeam2 && winner === 'team1' && cashOutTeam === 'team2') {
-    // Team 1 hits a six and wins, Team 2 loses and cashes out
     totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (sixTeam2 && !sixTeam1 && winner === 'team1') {
-    // Team 2 hits a six, Team 1 wins, add $25 bonus to Team 1's winnings
     totalWinningsUSD = (investmentTeam1USD * odds1) + 25;
   } else if (sixTeam2 && !sixTeam1 && winner === 'team2' && cashOutTeam === 'team1') {
-    // Team 2 hits a six and wins, Team 1 loses and cashes out
     totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (winner === 'team1' && cashOutTeam === 'team2') {
-    // Neither team hits a six, Team 1 wins, Team 2 cashes out
     totalWinningsUSD = (investmentTeam1USD * odds1) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (winner === 'team2' && cashOutTeam === 'team1') {
-    // Neither team hits a six, Team 2 wins, Team 1 cashes out
     totalWinningsUSD = (investmentTeam2USD * odds2) + (customCashOut ? customCashOut / exchangeRate : 0);
   } else if (winner === 'team1') {
-    // Neither team hits a six, Team 1 wins, no cashout
     totalWinningsUSD = investmentTeam1USD * odds1;
   } else if (winner === 'team2') {
-    // Neither team hits a six, Team 2 wins, no cashout
     totalWinningsUSD = investmentTeam2USD * odds2;
   }
 
-  // Convert winnings to INR
   totalWinningsINR = totalWinningsUSD * exchangeRate;
 
-  // Round the values to 2 decimal places
   totalWinningsUSD = parseFloat(totalWinningsUSD.toFixed(2));
   totalWinningsINR = parseFloat(totalWinningsINR.toFixed(2));
 
   const profitLossUSD = totalWinningsUSD - totalInvestedUSD;
   const profitLossINR = totalWinningsINR - totalInvestedINR;
 
-  // Round profit/loss to 2 decimal places
   const roundedProfitLossUSD = parseFloat(profitLossUSD.toFixed(2));
   const roundedProfitLossINR = parseFloat(profitLossINR.toFixed(2));
 
@@ -149,6 +137,12 @@ router.post('/', authenticateToken, async (req, res) => {
       date: new Date(req.body.date), // Ensure date is a Date object
     };
 
+    // Convert numeric fields to numbers
+    investmentData.odds1 = parseFloat(investmentData.odds1);
+    investmentData.odds2 = parseFloat(investmentData.odds2);
+    investmentData.customCashOut = parseFloat(investmentData.customCashOut) || 0;
+    investmentData.customBaseAmount = parseFloat(investmentData.customBaseAmount) || 25;
+
     // Calculate financial metrics
     const metrics = await calculateInvestmentMetrics(investmentData);
 
@@ -175,12 +169,31 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Validate that the investment belongs to the user
     const existingInvestment = await Investment.findOne({ _id: id, userId: req.user.userId });
     if (!existingInvestment) {
+      console.log('Investment not found for ID:', id, 'and user:', req.user.userId);
       return res.status(404).json({ message: 'Investment not found' });
+    }
+
+    // Convert numeric fields to numbers
+    updatedData.odds1 = parseFloat(updatedData.odds1);
+    updatedData.odds2 = parseFloat(updatedData.odds2);
+    updatedData.customCashOut = parseFloat(updatedData.customCashOut) || 0;
+    updatedData.customBaseAmount = parseFloat(updatedData.customBaseAmount) || 25;
+
+    // Validate numeric fields
+    if (isNaN(updatedData.odds1) || isNaN(updatedData.odds2)) {
+      return res.status(400).json({ message: 'Odds must be valid numbers' });
+    }
+    if (isNaN(updatedData.customBaseAmount)) {
+      return res.status(400).json({ message: 'Custom base amount must be a valid number' });
     }
 
     // Convert date to a Date object if provided
     if (updatedData.date) {
-      updatedData.date = new Date(updatedData.date);
+      const parsedDate = new Date(updatedData.date);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date format' });
+      }
+      updatedData.date = parsedDate;
     }
 
     // Calculate updated financial metrics based on the new data
@@ -201,9 +214,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!updatedInvestment) {
+      console.log('Investment not found after update for ID:', id);
       return res.status(404).json({ message: 'Investment not found after update' });
     }
 
+    console.log('Investment updated successfully:', updatedInvestment);
     res.json(updatedInvestment);
   } catch (err) {
     console.error('Error updating investment:', err);
