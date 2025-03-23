@@ -39,7 +39,8 @@ const calculateInvestmentMetrics = async (investmentData) => {
   const exchangeRate = await getExchangeRate();
   const {
     team1, team2, date, odds1, odds2, sixTeam1 = false, sixTeam2 = false,
-    winner, cashOutTeam = '', customCashOut = 0, currency, bettingId
+    winner, cashOutTeam = '', customCashOut = 0, currency, bettingId,
+    customBaseAmount // New field for custom base amount
   } = investmentData;
 
   // Validate required fields
@@ -53,8 +54,10 @@ const calculateInvestmentMetrics = async (investmentData) => {
     throw new Error('Winner must be "team1", "team2", or "none"');
   }
 
+  // Use customBaseAmount if provided, otherwise default to 25
+  const baseInvestmentUSD = customBaseAmount && customBaseAmount > 0 ? customBaseAmount : 25;
+
   // Calculate investments
-  const baseInvestmentUSD = 25;
   const investmentTeam1USD = baseInvestmentUSD / odds1;
   const investmentTeam2USD = baseInvestmentUSD / odds2;
   const investmentTeam1INR = investmentTeam1USD * exchangeRate;

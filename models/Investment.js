@@ -1,30 +1,74 @@
-// backend/models/Investment.js
 const mongoose = require('mongoose');
 
 const investmentSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  team1: { type: String, required: true },
-  team2: { type: String, required: true },
-  date: { type: Date, required: true },
-  odds1: { type: Number, required: true },
-  odds2: { type: Number, required: true },
-  sixTeam1: { type: Boolean, default: false },
-  sixTeam2: { type: Boolean, default: false },
-  winner: { type: String, enum: ['team1', 'team2', 'none'], default: 'none' }, // Allow 'none' and set as default
-  cashOutTeam: { type: String, default: '' },
-  customCashOut: { type: Number, default: null }, // Allow null, make optional
-  investmentTeam1USD: { type: Number, required: true },
-  investmentTeam2USD: { type: Number, required: true },
-  investmentTeam1INR: { type: Number, required: true },
-  investmentTeam2INR: { type: Number, required: true },
-  totalInvestedUSD: { type: Number, required: true },
-  totalInvestedINR: { type: Number, required: true },
-  totalWinningsUSD: { type: Number, required: true },
-  totalWinningsINR: { type: Number, required: true },
-  profitLossUSD: { type: Number, required: true },
-  profitLossINR: { type: Number, required: true },
-  currency: { type: String, required: true },
-  bettingId: { type: String, required: true }, // New field for betting ID
+  userId: {
+    type: String,
+    required: true,
+  },
+  team1: {
+    type: String,
+    required: true,
+  },
+  team2: {
+    type: String,
+    required: true,
+  },
+  date: {
+    type: Date,
+    required: true,
+  },
+  odds1: {
+    type: Number,
+    required: true,
+  },
+  odds2: {
+    type: Number,
+    required: true,
+  },
+  sixTeam1: {
+    type: Boolean,
+    default: false,
+  },
+  sixTeam2: {
+    type: Boolean,
+    default: false,
+  },
+  winner: {
+    type: String,
+    required: true,
+    enum: ['team1', 'team2', 'none'],
+  },
+  cashOutTeam: {
+    type: String,
+    default: '',
+    enum: ['team1', 'team2', ''], // Allow empty string for no cashout
+  },
+  customCashOut: {
+    type: Number,
+    default: 0,
+  },
+  customBaseAmount: { // New field for custom base amount
+    type: Number,
+    default: 25, // Default to 25 if not provided
+  },
+  currency: {
+    type: String,
+    required: true,
+  },
+  bettingId: {
+    type: String,
+    required: true,
+  },
+  investmentTeam1USD: Number,
+  investmentTeam2USD: Number,
+  investmentTeam1INR: Number,
+  investmentTeam2INR: Number,
+  totalInvestedUSD: Number,
+  totalInvestedINR: Number,
+  totalWinningsUSD: Number,
+  totalWinningsINR: Number,
+  profitLossUSD: Number,
+  profitLossINR: Number,
 });
 
 module.exports = mongoose.model('Investment', investmentSchema);
